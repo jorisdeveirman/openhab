@@ -196,6 +196,15 @@
 		<Name>Everspring</Name>
 		<Product>
 			<Reference>
+				<Type>0001</Type>
+				<Id>0003</Id>
+			</Reference>
+			<Model>HSP02</Model>
+			<Label lang="en">Motion Detector</Label>
+			<ConfigFile>everspring/hsp02.xml</ConfigFile>
+		</Product>
+		<Product>
+			<Reference>
 				<Type>0003</Type>
 				<Id>0001</Id>
 			</Reference>
@@ -1522,6 +1531,15 @@
 			<Model>DZMX1-1LZ</Model>
 			<Label lang="en">Scene Capable Push On/Off</Label>
 			<ConfigFile>leviton/dzmx1-1lz.xml</ConfigFile>
+		</Product>
+		<Product>
+			<Reference>
+			        <Type>802</Type>
+			        <Id>261</Id>
+			</Reference>
+			<Model>VRCZ4-M0Z</Model>
+			<Label lang="en">4-Zone Controller</Label>
+			<ConfigFile>leviton/vrcz4-m0z.xml</ConfigFile>
 		</Product>
 	</Manufacturer>
 	<Manufacturer>
