@@ -137,8 +137,9 @@
     <module>org.openhab.binding.bticino</module>
     <module>org.openhab.binding.zibase</module>
     <module>org.openhab.binding.wago</module>
+    <module>org.openhab.binding.networkupstools</module>
 	<module>org.openhab.binding.loxone</module>
     <module>org.openhab.binding.loxone.test</module>
-  </modules>
+	</modules>
 
 </project>
