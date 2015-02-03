@@ -1,12 +1,13 @@
 package org.openhab.binding.loxone.integration.api;
 
-public class AbstractLoxoneLocatedFunction extends AbstractLoxoneFunction {
-	private LoxoneRoom room;
-	private LoxoneCategory category;
+public abstract class AbstractLoxoneLocatedFunction extends
+		AbstractLoxoneFunction {
+	private final LoxoneRoom room;
+	private final LoxoneCategory category;
 
 	public AbstractLoxoneLocatedFunction(String name, String uuidAction,
-			LoxoneRoom room, LoxoneCategory category) {
-		super(name, uuidAction);
+			LoxoneRoom room, LoxoneCategory category, boolean readonly) {
+		super(name, uuidAction, readonly);
 		this.room = room;
 		this.category = category;
 	}
@@ -18,5 +19,4 @@ public class AbstractLoxoneLocatedFunction extends AbstractLoxoneFunction {
 	public LoxoneCategory getCategory() {
 		return category;
 	}
-
 }

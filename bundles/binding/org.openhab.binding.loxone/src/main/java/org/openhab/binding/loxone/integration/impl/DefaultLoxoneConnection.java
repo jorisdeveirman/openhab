@@ -2,22 +2,23 @@ package org.openhab.binding.loxone.integration.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.ConnectException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.openhab.binding.loxone.integration.LoxoneCommunicationException;
 import org.openhab.binding.loxone.integration.LoxoneConnection;
 import org.openhab.binding.loxone.integration.LoxoneHost;
+import org.openhab.binding.loxone.integration.LoxoneConnectionListener;
+import org.openhab.binding.loxone.integration.impl.support.LoxoneJsonHandler;
 import org.openhab.binding.loxone.integration.impl.support.LoxoneJsonHelper;
+import org.openhab.binding.loxone.integration.impl.support.LoxoneJsonTemplate;
 import org.openhab.binding.loxone.integration.impl.support.LoxoneUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Strings;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.AsyncHttpClientConfig.Builder;
@@ -36,21 +37,20 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 
 	private static final int REQUEST_TIMEOUT_MS = 60000;
 
-	private final JSONParser jsonParser = new JSONParser();
-
 	private final LoxoneHost host;
-	// private final EventPublisher eventPublisher;
 
 	private final String httpUri;
 	private final String wsUri;
 	private final AsyncHttpClient client;
+	private final LoxoneJsonTemplate template;
 
 	private WebSocket webSocket;
 	private boolean connected = false;
 
+	private LoxoneConnectionListener connectionListener;
+
 	public DefaultLoxoneConnection(LoxoneHost host) {
 		this.host = host;
-		// this.eventPublisher = eventPublisher;
 
 		this.httpUri = String.format("http://%s:%d", host.getHost(),
 				host.getPort());
@@ -59,6 +59,8 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 
 		this.client = new AsyncHttpClient(new NettyAsyncHttpProvider(
 				createAsyncHttpClientConfig()));
+
+		this.template = new LoxoneJsonTemplate(this);
 	}
 
 	/***
@@ -109,15 +111,14 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 	}
 
 	private String getKey() throws LoxoneCommunicationException {
-		InputStream jsonKey = get("/jdev/sys/getkey");
-		try {
-			JSONObject object = (JSONObject) jsonParser
-					.parse(new InputStreamReader(jsonKey));
-			return LoxoneJsonHelper.property(object, "LL.value");
-		} catch (ParseException | IOException e) {
-			throw new LoxoneCommunicationException("Failed to parse response",
-					e);
-		}
+		return template.get("/jdev/sys/getkey",
+				new LoxoneJsonHandler<String>() {
+
+					@Override
+					public String handle(JSONObject root) {
+						return LoxoneJsonHelper.property(root, "LL.value");
+					}
+				});
 	}
 
 	@Override
@@ -166,14 +167,24 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 		return builder.build();
 	}
 
+	private void notifyMessageReceived(String message) {
+		if (connectionListener != null && !Strings.isNullOrEmpty(message)) {
+			connectionListener.handleMessage(message);
+		}
+	}
+
 	private final class LoxoneWebSocketListener implements
 			WebSocketTextListener {
 
 		@Override
 		public void onClose(WebSocket arg0) {
-			logger.warn("[{}]: Websocket closed", host.getHost());
+			logger.info("[{}]: Websocket closed", host.getHost());
 			webSocket = null;
 			connected = false;
+
+			if (connectionListener != null) {
+				connectionListener.connectionClosed();
+			}
 		}
 
 		@Override
@@ -190,26 +201,29 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 
 		@Override
 		public void onOpen(WebSocket socket) {
-			logger.debug("[{}]: Websocket opened", host.getHost());
+			logger.trace("[{}]: Websocket opened", host.getHost());
 			connected = true;
 
-			socket.sendTextMessage("jdev/sps/LoxAPPversion");
+			//socket.sendTextMessage("jdev/sps/LoxAPPversion");
+			
+			if (connectionListener != null) {
+				connectionListener.connectionOpened();
+			}
+
 			// socket.sendTextMessage("jdev/sps/listcmds");
-			// socket.sendTextMessage("jdev/sps/getloxapp");
+			socket.sendTextMessage("jdev/sps/getloxapp");
 			socket.sendTextMessage("jdev/sps/enablestatusupdate");
 		}
 
 		@Override
 		public void onFragment(String message, boolean bool) {
-			logger.debug("[{}]: Fragment Message received: {}", host.getHost(),
-					message);
 		}
 
 		@Override
 		public void onMessage(String message) {
-			logger.debug("[{}]: Message received: {}", host.getHost(), message);
+			logger.trace("[{}]: Message received: {}", host.getHost(), message);
+			notifyMessageReceived(message);
 		}
-
 	}
 
 	@Override
@@ -218,12 +232,8 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 	}
 
 	@Override
-	public AsyncHttpClient getNativeHttpClient() {
-		return client;
+	public void setMessageHandler(LoxoneConnectionListener messageHandler) {
+		this.connectionListener = messageHandler;
 	}
 
-	@Override
-	public WebSocket getNativeWebSocket() {
-		return webSocket;
-	}
 }

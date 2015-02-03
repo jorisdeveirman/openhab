@@ -1,16 +1,22 @@
 package org.openhab.binding.loxone.integration.impl.support;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import com.google.common.base.Defaults;
 import com.google.common.base.Function;
 import com.google.common.base.Splitter;
 
 public class LoxoneJsonHelper {
+	private static final JSONParser jsonParser = new JSONParser();
 	private static final Splitter dotSplitter = Splitter.on(".");
 
 	private static final Map<Class<?>, Function<String, ?>> converters = new HashMap<>();
@@ -67,5 +73,14 @@ public class LoxoneJsonHelper {
 	@SuppressWarnings("unchecked")
 	public static <T> T singleProperty(JSONObject object, String property) {
 		return (T) object.get(property);
+	}
+
+	public static JSONObject parse(String text) throws ParseException {
+		return (JSONObject) jsonParser.parse(text);
+	}
+
+	public static JSONObject parse(InputStream stream) throws IOException,
+			ParseException {
+		return (JSONObject) jsonParser.parse(new InputStreamReader(stream));
 	}
 }

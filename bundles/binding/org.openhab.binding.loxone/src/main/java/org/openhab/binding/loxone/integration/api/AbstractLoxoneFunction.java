@@ -1,12 +1,14 @@
 package org.openhab.binding.loxone.integration.api;
 
 public abstract class AbstractLoxoneFunction {
-	private String name;
-	private String uuidAction;
+	private final String name;
+	private final String uuidAction;
+	private final boolean readonly;
 
-	public AbstractLoxoneFunction(String name, String uuidAction) {
+	public AbstractLoxoneFunction(String name, String uuidAction, boolean readonly) {
 		this.name = name;
 		this.uuidAction = uuidAction;
+		this.readonly = readonly;
 	}
 
 	public String getName() {
@@ -16,5 +18,11 @@ public abstract class AbstractLoxoneFunction {
 	public String getUuidAction() {
 		return uuidAction;
 	}
+	
+	public boolean isReadOnly() {
+		return readonly;
+	}
+	
+	public abstract void visit(LoxoneFunctionVisitor visitor);
 
 }

@@ -62,6 +62,6 @@ sitemap demo label="Main Menu"
 				Video url="http://demo.openhab.org/Hue.m4v"
 				Webview url="http://heise-online.mobi/" height=8
 			}
-		}
-	}
+		}	
+	}	
 }

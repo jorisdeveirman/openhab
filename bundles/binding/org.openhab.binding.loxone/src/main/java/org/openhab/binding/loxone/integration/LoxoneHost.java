@@ -3,11 +3,20 @@ package org.openhab.binding.loxone.integration;
 import org.apache.commons.lang.StringUtils;
 
 public class LoxoneHost {
+	private final String name;
 	private String host;
 	private int port = 80;
 	private boolean ssl;
 	private String username = "admin";
 	private String password = "admin";
+
+	public LoxoneHost(String name) {
+		this.name = name;
+	}
+
+	public String getName() {
+		return name;
+	}
 
 	public String getHost() {
 		return host;
@@ -54,5 +63,14 @@ public class LoxoneHost {
 				&& !StringUtils.isEmpty(username)
 				&& !StringUtils.isEmpty(password);
 	}
+
+	@Override
+	public String toString() {
+		return "LoxoneHost [name=" + name + ", host=" + host + ", port=" + port
+				+ ", ssl=" + ssl + ", username=" + username + ", password=******"
+			    + "]";
+	}
+	
+	
 
 }

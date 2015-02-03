@@ -11,6 +11,10 @@ public interface Miniserver {
 	SpsApi sps();
 
 	ConfigurationApi cfg();
-	
+
 	void dispose();
+
+	void addLoxoneEventListener(LoxoneEventListener listener);
+
+	void removeLoxoneEventListener(LoxoneEventListener listener);
 }
