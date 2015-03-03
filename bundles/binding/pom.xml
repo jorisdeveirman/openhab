@@ -141,6 +141,6 @@
     <module>org.openhab.binding.networkupstools</module>
 	<module>org.openhab.binding.loxone</module>
     <module>org.openhab.binding.loxone.test</module>
-	</modules>
-
+    <module>org.openhab.binding.ecobee</module>
+  </modules>
 </project>
