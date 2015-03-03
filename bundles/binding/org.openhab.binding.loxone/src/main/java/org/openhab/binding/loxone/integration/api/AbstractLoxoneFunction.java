@@ -23,6 +23,6 @@ public abstract class AbstractLoxoneFunction {
 		return readonly;
 	}
 	
-	public abstract void visit(LoxoneFunctionVisitor visitor);
+	public abstract <V> V visit(LoxoneFunctionVisitor<V> visitor);
 
 }

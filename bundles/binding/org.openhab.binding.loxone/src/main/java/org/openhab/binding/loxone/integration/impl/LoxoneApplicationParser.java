@@ -27,7 +27,12 @@ class LoxoneApplicationParser {
 				int roomId = LoxoneJsonHelper.property(input.json, "room", int.class);
 				int categoryId = LoxoneJsonHelper.property(input.json, "cat", int.class);
 				String ro = LoxoneJsonHelper.property(input.json, "detail.InfoOnly");
-				return new DimmerFunction(name, uuid, input.application.findRoomById(roomId), input.application.findCategoryById(categoryId), "YES".equalsIgnoreCase(ro));
+				DimmerFunction f=  new DimmerFunction(name, uuid, input.application.findRoomById(roomId), input.application.findCategoryById(categoryId), "YES".equalsIgnoreCase(ro));
+				f.setStateMaxUuid(LoxoneJsonHelper.property(input.json, "StateMax.UUID"));
+				f.setStateMinUuid(LoxoneJsonHelper.property(input.json, "StateMin.UUID"));
+				f.setStateStepUuid(LoxoneJsonHelper.property(input.json, "StateStep.UUID"));
+				f.setStatePosUuid(LoxoneJsonHelper.property(input.json, "StatePos.UUID"));
+				return f;
 			}
 		});
 	}

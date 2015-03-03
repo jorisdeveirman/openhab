@@ -20,13 +20,13 @@ public class DefaultSpsApi implements SpsApi {
 	public static SpsApi withMiniServer(DefaultMiniserver miniserver) {
 		return new DefaultSpsApi(miniserver);
 	}
-
-	@Override
+//													  09891038-00ec-182e-ffffeee000c400a4
+	@Override // <20:18:17:656> Sent cmd: jdev/sps/io/089ad95a-0127-0f85-ffffeee000c400a4/100
 	public IoResponse io(String uuid, String value) {
-		return template.get("io", new LoxoneJsonHandler<IoResponse>() {
+		return template.get(String.format("io/%s/%s", uuid, value), new LoxoneJsonHandler<IoResponse>() {
 			@Override
 			public IoResponse handle(JSONObject root) {
-				return new IoResponse(LoxoneJsonHelper.property(root, "LL.control"), LoxoneJsonHelper.property(root, "LL.value"), LoxoneJsonHelper.property(root, "LL.code", Integer.class));
+				return new IoResponse(LoxoneJsonHelper.property(root, "LL.control"), LoxoneJsonHelper.property(root, "LL.value"), LoxoneJsonHelper.property(root, "LL.Code", int.class));
 			}
 		});
 	}

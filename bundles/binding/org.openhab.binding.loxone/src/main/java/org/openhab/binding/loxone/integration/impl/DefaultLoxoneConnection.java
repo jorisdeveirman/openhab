@@ -32,8 +32,7 @@ import com.ning.http.client.websocket.WebSocketTextListener;
 import com.ning.http.client.websocket.WebSocketUpgradeHandler;
 
 public class DefaultLoxoneConnection implements LoxoneConnection {
-	private static final Logger logger = LoggerFactory
-			.getLogger(DefaultLoxoneConnection.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultLoxoneConnection.class);
 
 	private static final int REQUEST_TIMEOUT_MS = 60000;
 
@@ -52,13 +51,10 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 	public DefaultLoxoneConnection(LoxoneHost host) {
 		this.host = host;
 
-		this.httpUri = String.format("http://%s:%d", host.getHost(),
-				host.getPort());
-		this.wsUri = String.format("ws://%s:%d/ws", host.getHost(),
-				host.getPort());
+		this.httpUri = String.format("http://%s:%d", host.getHost(), host.getPort());
+		this.wsUri = String.format("ws://%s:%d/ws", host.getHost(), host.getPort());
 
-		this.client = new AsyncHttpClient(new NettyAsyncHttpProvider(
-				createAsyncHttpClientConfig()));
+		this.client = new AsyncHttpClient(new NettyAsyncHttpProvider(createAsyncHttpClientConfig()));
 
 		this.template = new LoxoneJsonTemplate(this);
 	}
@@ -66,8 +62,7 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 	/***
 	 * Check if the connection to the Loxone instance is active
 	 * 
-	 * @return true if an active connection to the Loxone instance exists, false
-	 *         otherwise
+	 * @return true if an active connection to the Loxone instance exists, false otherwise
 	 */
 	public boolean isConnected() {
 		if (webSocket == null || !webSocket.isOpen())
@@ -77,8 +72,7 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 	}
 
 	/**
-	 * Attempts to create a connection to the XBMC host and begin listening for
-	 * updates over the async http web socket
+	 * Attempts to create a connection to the XBMC host and begin listening for updates over the async http web socket
 	 * 
 	 * @throws ExecutionException
 	 * @throws InterruptedException
@@ -95,39 +89,28 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 		String encoded = LoxoneUtils.hmacSha1(value, key);
 
 		try {
-			webSocket = client
-					.prepareGet(wsUri)
-					.setHeader("Sec-WebSocket-Protocol", encoded)
-					.setHeader("Connection", "Upgrade")
-					.setHeader("Upgrade", "websocket")
-					.setHeader("Sec-WebSocket-Extensions",
-							"permessage-deflate; client_max_window_bits")
-					.execute(createWebSocketHandler()).get();
+			webSocket = client.prepareGet(wsUri).setHeader("Sec-WebSocket-Protocol", encoded).setHeader("Connection", "Upgrade").setHeader("Upgrade", "websocket").setHeader("Sec-WebSocket-Extensions", "permessage-deflate; client_max_window_bits").execute(createWebSocketHandler()).get();
 		} catch (InterruptedException | ExecutionException | IOException e) {
-			throw new LoxoneCommunicationException("Failed to open websocket",
-					e);
+			throw new LoxoneCommunicationException("Failed to open websocket", e);
 		}
 
 	}
 
 	private String getKey() throws LoxoneCommunicationException {
-		return template.get("/jdev/sys/getkey",
-				new LoxoneJsonHandler<String>() {
+		return template.get("/jdev/sys/getkey", new LoxoneJsonHandler<String>() {
 
-					@Override
-					public String handle(JSONObject root) {
-						return LoxoneJsonHelper.property(root, "LL.value");
-					}
-				});
+			@Override
+			public String handle(JSONObject root) {
+				return LoxoneJsonHelper.property(root, "LL.value");
+			}
+		});
 	}
 
 	@Override
 	public InputStream get(String url) throws LoxoneCommunicationException {
 		ListenableFuture<Response> future;
 		try {
-			future = client.prepareGet(httpUri + url)
-					.setHeader("content-type", "application/json")
-					.setHeader("accept", "application/json").execute();
+			future = client.prepareGet(httpUri + url).setHeader("content-type", "application/json").setHeader("accept", "application/json").execute();
 			return future.get().getResponseBodyAsStream();
 		} catch (IOException | InterruptedException | ExecutionException e) {
 			throw new LoxoneCommunicationException("Failed to get " + url, e);
@@ -169,12 +152,15 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 
 	private void notifyMessageReceived(String message) {
 		if (connectionListener != null && !Strings.isNullOrEmpty(message)) {
-			connectionListener.handleMessage(message);
+			try {
+				connectionListener.handleMessage(message);
+			} catch (Throwable t) {
+				logger.error("Failed to hande message {} due to an unknown error", message, t);
+			}
 		}
 	}
 
-	private final class LoxoneWebSocketListener implements
-			WebSocketTextListener {
+	private final class LoxoneWebSocketListener implements WebSocketTextListener {
 
 		@Override
 		public void onClose(WebSocket arg0) {
@@ -204,8 +190,8 @@ public class DefaultLoxoneConnection implements LoxoneConnection {
 			logger.trace("[{}]: Websocket opened", host.getHost());
 			connected = true;
 
-			//socket.sendTextMessage("jdev/sps/LoxAPPversion");
-			
+			// socket.sendTextMessage("jdev/sps/LoxAPPversion");
+
 			if (connectionListener != null) {
 				connectionListener.connectionOpened();
 			}

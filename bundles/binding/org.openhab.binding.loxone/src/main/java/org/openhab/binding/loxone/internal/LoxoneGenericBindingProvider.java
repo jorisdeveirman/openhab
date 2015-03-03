@@ -11,7 +11,6 @@ package org.openhab.binding.loxone.internal;
 import java.util.Map;
 
 import org.openhab.binding.loxone.LoxoneBindingProvider;
-import org.openhab.binding.loxone.integration.api.AbstractLoxoneFunction;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
@@ -71,7 +70,8 @@ public class LoxoneGenericBindingProvider extends AbstractGenericBindingProvider
 		config.instance = properties.get("instance");
 		config.uuid = properties.get("uuid");
 		config.name = properties.get("name");
-		config.supportedStates = item.getAcceptedDataTypes();
+		config.itemName  = item.getName();
+		//config.supportedStates = item.getAcceptedDataTypes();
 
 		if (Strings.isNullOrEmpty(config.instance)) {
 			config.instance = DEFAULT_INSTANCE;
@@ -95,11 +95,14 @@ public class LoxoneGenericBindingProvider extends AbstractGenericBindingProvider
 	}
 
 	@Override
-	public String findItemNameByUUIDorName(final String instance, final String uuid, final String name) {
+	public String findItemNameByUUIDOrName(final String instance, final String uuid, final String name) {
 		Map.Entry<String, BindingConfig> entry = Iterables.find(bindingConfigs.entrySet(), new Predicate<Map.Entry<String, BindingConfig>>() {
 			public boolean apply(Map.Entry<String, BindingConfig> entry) {
 				LoxoneBindingConfig config = (LoxoneBindingConfig) entry.getValue();
-				return isDefaultLoxoneInstance(config.instance) ? true : config.instance.equalsIgnoreCase(instance) && (config.uuid.equalsIgnoreCase(uuid) || name.equalsIgnoreCase(config.name));
+				boolean matchesInstance = isDefaultLoxoneInstance(config.instance) ? true : config.instance.equalsIgnoreCase(instance);
+				boolean matchesUUID = uuid.equalsIgnoreCase(config.uuid);
+				boolean matchesName =  name.equalsIgnoreCase(config.name);
+				return  matchesInstance && (matchesName || matchesUUID);
 			}
 		}, null);
 		return entry == null ? null : entry.getKey();
@@ -110,7 +113,9 @@ public class LoxoneGenericBindingProvider extends AbstractGenericBindingProvider
 		Map.Entry<String, BindingConfig> entry = Iterables.find(bindingConfigs.entrySet(), new Predicate<Map.Entry<String, BindingConfig>>() {
 			public boolean apply(Map.Entry<String, BindingConfig> entry) {
 				LoxoneBindingConfig config = (LoxoneBindingConfig) entry.getValue();
-				return isDefaultLoxoneInstance(config.instance) ? true : config.instance.equalsIgnoreCase(instance) && config.uuid.equalsIgnoreCase(uuid);
+				boolean matchesInstance = isDefaultLoxoneInstance(config.instance) ? true : config.instance.equalsIgnoreCase(instance);
+				boolean matchesUUID = uuid.equalsIgnoreCase(config.uuid);
+				return  matchesInstance && matchesUUID;
 			}
 		}, null);
 		return (LoxoneBindingConfig) (entry == null ? null : entry.getValue());
@@ -119,20 +124,5 @@ public class LoxoneGenericBindingProvider extends AbstractGenericBindingProvider
 	@Override
 	public LoxoneBindingConfig findLoxoneBindingConfigByItemName(String itemName) {
 		return (LoxoneBindingConfig) bindingConfigs.get(itemName);
-	}
-
-	@Override
-	public void disassociateLoxoneFunctions() {
-		for (BindingConfig config : bindingConfigs.values()) {
-			((LoxoneBindingConfig) config).disassociateLoxoneFunction();
-		}
-	}
-
-	@Override
-	public void associateLoxoneFunction(String itemName, AbstractLoxoneFunction function) {
-		LoxoneBindingConfig config = (LoxoneBindingConfig) bindingConfigs.get(itemName);
-		if (config != null) {
-			config.associateLoxoneFunction(function);
-		}
 	}
 }

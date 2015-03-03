@@ -8,7 +8,6 @@
  */
 package org.openhab.binding.loxone;
 
-import org.openhab.binding.loxone.integration.api.AbstractLoxoneFunction;
 import org.openhab.binding.loxone.internal.LoxoneBindingConfig;
 import org.openhab.core.binding.BindingProvider;
 
@@ -22,14 +21,9 @@ public interface LoxoneBindingProvider extends BindingProvider {
 
 	String getLoxoneInstance(String itemName);
 
-	String findItemNameByUUIDorName(String instance, String uuid, String name);
+	String findItemNameByUUIDOrName(String instance, String uuid, String name);
 
 	LoxoneBindingConfig findLoxoneBindingConfigByUUID(String instance, String uuid);
 
 	LoxoneBindingConfig findLoxoneBindingConfigByItemName(String itemName);
-
-	void disassociateLoxoneFunctions();
-
-	void associateLoxoneFunction(String itemName, AbstractLoxoneFunction function);
-
 }

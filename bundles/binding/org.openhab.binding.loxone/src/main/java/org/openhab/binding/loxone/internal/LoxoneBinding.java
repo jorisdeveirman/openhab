@@ -50,6 +50,7 @@ public class LoxoneBinding extends AbstractBinding<LoxoneBindingProvider> implem
 	private static final Logger logger = LoggerFactory.getLogger(LoxoneBinding.class);
 
 	private final MiniserverFactory miniserverFactory = MiniserverFactory.DEFAULT;
+	private final LoxoneItemBindingRepository loxoneItemBindingRepository = new DefaultLoxoneItemBindingRepository();
 	private final LoxoneEventListener loxoneEventListener = new InternalLoxoneEventListener();
 
 	private final List<Miniserver> miniservers = new LinkedList<Miniserver>();
@@ -75,7 +76,7 @@ public class LoxoneBinding extends AbstractBinding<LoxoneBindingProvider> implem
 	@Override
 	public void bindingChanged(BindingProvider provider, String itemName) {
 		logger.debug("Binding changed {}", itemName);
-		// update specific item with application
+		// TODO update specific item with application
 	}
 
 	/**
@@ -87,6 +88,22 @@ public class LoxoneBinding extends AbstractBinding<LoxoneBindingProvider> implem
 		// event bus goes here. This method is only called if one of the
 		// BindingProviders provide a binding for the given 'itemName'.
 		logger.debug("internalReceiveCommand() is called!");
+		for (LoxoneBindingProvider provider : providers) {
+			LoxoneItemBinding loxoneItemBinding = loxoneItemBindingRepository.findForItemName(itemName);
+			final String instance = provider.getLoxoneInstance(itemName);
+			if (loxoneItemBinding != null) {
+				if (loxoneItemBinding.isReadOnly()) {
+					logger.warn("Did not update {} to loxone because it is marked readonly. Ignoring update.", itemName);
+					continue;
+				}
+				LoxoneValue value = loxoneItemBinding.convertToLoxoneValue(command);
+				if (value == null) {
+					logger.warn("Converted {} to NULL for {}. Ignoring update.", command, itemName);
+					continue;
+				}
+				applyValueToLoxone(instance, itemName, value);
+			}
+		}
 	}
 
 	/**
@@ -98,35 +115,20 @@ public class LoxoneBinding extends AbstractBinding<LoxoneBindingProvider> implem
 		// event bus goes here. This method is only called if one of the
 		// BindingProviders provide a binding for the given 'itemName'.
 		logger.debug("internalReceiveUpdate() is called!");
-		// OnOffType o = (OnOffType)newState;
-		// DecimalType decimalType = (DecimalType) newState;
-		// TODO create command from itemName+State and execute against
-		// miniserver
 		for (LoxoneBindingProvider provider : providers) {
-			final LoxoneBindingConfig config = provider.findLoxoneBindingConfigByItemName(itemName);
-			if (config != null) {
-				if(!config.associated()) {
-					logger.warn("Did not update {} to loxone because it is not associated to a LoxoneFunction. Ignoring update.", itemName);
-					continue;
-				}
-				if (config.readOnly()) {
+			LoxoneItemBinding loxoneItemBinding = loxoneItemBindingRepository.findForItemName(itemName);
+			final String instance = provider.getLoxoneInstance(itemName);
+			if (loxoneItemBinding != null) {
+				if (loxoneItemBinding.isReadOnly()) {
 					logger.warn("Did not update {} to loxone because it is marked readonly. Ignoring update.", itemName);
 					continue;
 				}
-				String value = config.loxoneValue(newState);
-				if (Strings.isNullOrEmpty(value)) {
+				LoxoneValue value = loxoneItemBinding.convertToLoxoneValue(newState);
+				if (value == null) {
 					logger.warn("Converted {} to NULL for {}. Ignoring update.", newState, itemName);
 					continue;
 				}
-				Miniserver miniserver = Iterables.find(miniservers, new Predicate<Miniserver>() {
-					public boolean apply(Miniserver miniserver) {
-						return config.instance.equalsIgnoreCase(miniserver.host().getName());
-					}
-				});
-				IoResponse response = miniserver.sps().io(config.uuid, value);
-				if(!response.success()) {
-					logger.warn("Failed to update {} to value {}. Reponse is {}", itemName, response );
-				}
+				applyValueToLoxone(instance, itemName, value);
 			}
 		}
 	}
@@ -180,6 +182,28 @@ public class LoxoneBinding extends AbstractBinding<LoxoneBindingProvider> implem
 		}
 	}
 
+	private void applyValueToLoxone(String instance, String itemName, LoxoneValue value) {
+		Miniserver miniserver = findMiniserver(instance);
+		try {
+			IoResponse response = miniserver.sps().io(value.getUuid(), value.getValue());
+			if (!response.success()) {
+				logger.warn("Failed to update {} to value {}. Reponse is {}", itemName, value, response);
+			}else {
+				logger.debug("Updated {} to value {}", itemName,value);
+			}
+		} catch (LoxoneCommunicationException e) {
+			logger.error("Failed to update {} to value {}. An unexpected error occured", itemName, value, e);
+		}
+	}
+
+	private Miniserver findMiniserver(final String instance) {
+		return Iterables.find(miniservers, new Predicate<Miniserver>() {
+			public boolean apply(Miniserver miniserver) {
+				return instance.equalsIgnoreCase(miniserver.host().getName());
+			}
+		}, Iterables.getFirst(miniservers, null));
+	}
+
 	/**
 	 * Updates the connections as specified by {@code code}. First it disconnects and disposes all existing connections.
 	 * Then is creates the connections and registers for events.
@@ -221,44 +245,31 @@ public class LoxoneBinding extends AbstractBinding<LoxoneBindingProvider> implem
 
 		@Override
 		public void onEvent(Miniserver miniserver, LoxoneEvent event) {
-			boolean processed = false;
-			String loxoneName = miniserver.host().getName();
-			for (LoxoneBindingProvider provider : providers) {
-				LoxoneBindingConfig config = provider.findLoxoneBindingConfigByUUID(loxoneName, event.getUuid());
-				if (config != null) {
-					if(!config.associated()) {
-						logger.warn("Did not handle {} for {} from loxone because it is not associated to a LoxoneFunction. Ignoring update.", event, config.itemName);
-						continue;
-					}
-					
-					logger.debug("Handling {} for {}", event, config.itemName);
-					String value = event.getValue();
-					State state = config.state(value);
-					if (state != null) {
-						logger.warn("Converted value {} to State NULL for {}. Ignoring update.", value, config.itemName);
-						continue;
-					}
-					eventPublisher.postUpdate(config.itemName, state);
-					processed = true;
+			LoxoneItemBinding loxoneItemBinding = loxoneItemBindingRepository.findForUuid(event.getUuid());
+			if (loxoneItemBinding != null) {
+				logger.debug("Handling {} for {}", event, loxoneItemBinding.getItemName());
+				State state = loxoneItemBinding.convertToLoxoneState(LoxoneValue.create(event.getUuid(), event.getValue()));
+				if (state != null) {
+					eventPublisher.postUpdate(loxoneItemBinding.getItemName(), state);
+				} else {
+					logger.warn("Converted value {} to State NULL for {}. Ignoring update.", event.getValue(), loxoneItemBinding.getItemName());
 				}
-			}
-			if (!processed) {
-				logger.warn("Did not process {} (miniserver={}) because no item binding is available", event, miniserver.host());
+			} else {
+				logger.trace("Did not process {} (miniserver={}) because no Item Binding is available", event, miniserver.host());
 			}
 		}
 
 		@Override
 		public void onApplicationChanged(Miniserver miniserver, LoxoneApplication application) {
-			// TODO cache the application
+			loxoneItemBindingRepository.evictAll();
 			for (LoxoneBindingProvider provider : providers) {
-				provider.disassociateLoxoneFunctions();
 				for (AbstractLoxoneFunction function : application.getFunctions()) {
-					String itemName = provider.findItemNameByUUIDorName(miniserver.host().getName(), function.getUuidAction(), function.getName());
+					String itemName = provider.findItemNameByUUIDOrName(miniserver.host().getName(), function.getUuidAction(), function.getName());
 					if (Strings.isNullOrEmpty(itemName)) {
-						logger.debug("No ItemBinding for {}. Updates will be ignored.", function);
+						logger.debug("No Item Binding for {}. Updates will be ignored.", function);
 						continue;
 					}
-					provider.associateLoxoneFunction(itemName, function);
+					loxoneItemBindingRepository.create(itemName, function);
 				}
 			}
 		}
